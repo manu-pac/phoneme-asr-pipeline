@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# Data (large files, tracked by DVC instead)
+data/raw/
+data/noisy/
+
+# HuggingFace model cache
+.cache/
