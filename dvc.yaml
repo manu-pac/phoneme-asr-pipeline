@@ -83,3 +83,13 @@ evaluate:
       - data/manifests/en/pred_noisy_snr_-5.jsonl
     metrics:
       - metrics/per_en.json
+
+
+plot:
+    cmd: python src/plot.py
+    deps:
+      - src/plot.py
+      - params.yaml
+      - metrics/per_en.json
+    outs:
+      - plots/per_vs_snr.png
