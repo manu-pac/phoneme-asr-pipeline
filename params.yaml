@@ -1,0 +1,25 @@
+languages:
+  - pt
+
+snr_levels:
+  - 40
+  - 35
+  - 30
+  - 25
+  - 20
+  - 15
+  - 10
+  - 5
+  - 0
+  - -5
+
+seed: 42
+
+data:
+  raw_dir: data/raw
+  manifest_dir: data/manifests
+  noisy_dir: data/noisy
+
+model:
+  name: facebook/wav2vec2-lv-60-espeak-cv-ft
+  sample_rate: 16000s
