@@ -64,3 +64,22 @@ run_asr:
       - data/manifests/en/pred_noisy_snr_5.jsonl
       - data/manifests/en/pred_noisy_snr_0.jsonl
       - data/manifests/en/pred_noisy_snr_-5.jsonl
+
+evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - src/evaluate.py
+      - params.yaml
+      - data/manifests/en/pred_clean_phonemized.jsonl
+      - data/manifests/en/pred_noisy_snr_40.jsonl
+      - data/manifests/en/pred_noisy_snr_35.jsonl
+      - data/manifests/en/pred_noisy_snr_30.jsonl
+      - data/manifests/en/pred_noisy_snr_25.jsonl
+      - data/manifests/en/pred_noisy_snr_20.jsonl
+      - data/manifests/en/pred_noisy_snr_15.jsonl
+      - data/manifests/en/pred_noisy_snr_10.jsonl
+      - data/manifests/en/pred_noisy_snr_5.jsonl
+      - data/manifests/en/pred_noisy_snr_0.jsonl
+      - data/manifests/en/pred_noisy_snr_-5.jsonl
+    metrics:
+      - metrics/per_en.json
