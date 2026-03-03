@@ -1,0 +1,18 @@
+stages:
+  prepare_data:
+    cmd: python src/prepare_data.py
+    deps:
+      - src/prepare_data.py
+      - params.yaml
+    outs:
+      - data/manifests/en/clean.jsonl
+      - data/raw/en/wav
+
+  phonemize:
+    cmd: python src/phonemize.py
+    deps:
+      - src/phonemize.py
+      - params.yaml
+      - data/manifests/en/clean.jsonl
+    outs:
+      - data/manifests/en/clean_phonemized.jsonl
