@@ -16,3 +16,22 @@ stages:
       - data/manifests/en/clean.jsonl
     outs:
       - data/manifests/en/clean_phonemized.jsonl
+
+add_noise:
+    cmd: python src/add_noise.py
+    deps:
+      - src/add_noise.py
+      - params.yaml
+      - data/manifests/en/clean_phonemized.jsonl
+    outs:
+      - data/noisy/en
+      - data/manifests/en/noisy_snr_40.jsonl
+      - data/manifests/en/noisy_snr_35.jsonl
+      - data/manifests/en/noisy_snr_30.jsonl
+      - data/manifests/en/noisy_snr_25.jsonl
+      - data/manifests/en/noisy_snr_20.jsonl
+      - data/manifests/en/noisy_snr_15.jsonl
+      - data/manifests/en/noisy_snr_10.jsonl
+      - data/manifests/en/noisy_snr_5.jsonl
+      - data/manifests/en/noisy_snr_0.jsonl
+      - data/manifests/en/noisy_snr_-5.jsonl
