@@ -65,6 +65,6 @@ plt.gca().invert_xaxis()  # left = most noise, right = cleanest
 tmp_path = PLOTS_DIR / "per_vs_snr_tmp.png"
 final_path = PLOTS_DIR / "per_vs_snr.png"
 plt.savefig(str(tmp_path), dpi=150, bbox_inches="tight")
-tmp_path.rename(final_path)
+tmp_path.replace(final_path)
 
 print(f"Plot saved to {final_path}")

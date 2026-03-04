@@ -1,117 +1,125 @@
 # =============================================================================
 # Stage 0: Data Preparation
-# Reads audio and transcripts from a local LibriSpeech folder and creates
-# the initial manifest. This is the entry point of the pipeline — it produces
-# clean.jsonl which all subsequent stages depend on.
+# Reads audio and transcripts from local CommonVoice datasets and creates
+# the initial manifest for each language defined in params.yaml.
+# CommonVoice format: .mp3 audio files + test.tsv transcript file
+# Audio is converted from .mp3 to .wav using ffmpeg.
 # =============================================================================
 
-import json        # for writing .jsonl manifest (one JSON object per line)
-import hashlib     # for computing audio_md5 checksum (required by the lab)
-import soundfile as sf  # for reading .flac and writing .wav files
-from pathlib import Path  # for cross-platform file path handling
-import yaml        # for reading params.yaml
+import json
+import hashlib
+import subprocess
+import soundfile as sf
+from pathlib import Path
+import yaml
 
-# =============================================================================
-# Load parameters from params.yaml
-# This is what allows the pipeline to work for any language without
-# changing the code — we just change params.yaml
-# =============================================================================
 with open("params.yaml") as f:
     params = yaml.safe_load(f)
 
-LANG = params["languages"][0]          # e.g. "en"
-RAW_DIR = Path(params["data"]["raw_dir"]) / LANG / "wav"    # data/raw/en/wav
-MANIFEST_DIR = Path(params["data"]["manifest_dir"]) / LANG  # data/manifests/en
-NUM_SAMPLES = 30  # how many clips to use — small enough to work with easily
-
-# Where LibriSpeech was extracted
-LIBRISPEECH_DIR = Path(params["data"]["raw_dir"]) / LANG / "LibriSpeech" / "test-clean"
+LANGUAGES = params["languages"]
+NUM_SAMPLES = 30
+CV_VERSION = "cv-corpus-24.0-2025-12-05"
 
 # =============================================================================
-# Create output folders if they don't exist yet
+# Helper: convert .mp3 to .wav using ffmpeg
 # =============================================================================
-RAW_DIR.mkdir(parents=True, exist_ok=True)
-MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
+def convert_mp3_to_wav(mp3_path: str, wav_path: str) -> None:
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",              # overwrite output if exists
+            "-i", mp3_path,    # input file
+            "-ar", "16000",    # resample to 16000 Hz (required by wav2vec2)
+            "-ac", "1",        # convert to mono
+            wav_path           # output file
+        ],
+        capture_output=True,   # suppress ffmpeg output
+        check=True             # raise error if ffmpeg fails
+    )
 
 # =============================================================================
-# Read LibriSpeech folder structure
-# Each speaker folder contains audio .flac files and a .trans.txt transcript
-# file. We walk through all of them and collect (audio_path, transcript) pairs.
+# Atomic manifest writer
 # =============================================================================
-print(f"Reading LibriSpeech from {LIBRISPEECH_DIR}")
+def write_manifest(final_path: Path, records: list) -> None:
+    tmp_path = Path(str(final_path) + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        for r in records:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    tmp_path.replace(final_path)
 
-pairs = []  # list of (flac_path, transcript_text) tuples
+# =============================================================================
+# Prepare data for a single CommonVoice language
+# Works identically for any language — no special cases needed
+# =============================================================================
+def prepare_language(lang: str) -> None:
+    # Paths
+    CV_DIR = Path(params["data"]["raw_dir"]) / lang / CV_VERSION / lang
+    WAV_DIR = Path(params["data"]["raw_dir"]) / lang / "wav"
+    MANIFEST_DIR = Path(params["data"]["manifest_dir"]) / lang
+    TSV_PATH = CV_DIR / "test.tsv"
+    CLIPS_DIR = CV_DIR / "clips"
 
-for trans_file in sorted(LIBRISPEECH_DIR.rglob("*.trans.txt")):
-    # Each line in the transcript file is: UTTERANCE_ID transcript text
-    with open(trans_file, encoding="utf-8") as f:
+    WAV_DIR.mkdir(parents=True, exist_ok=True)
+    MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n=== Preparing language: {lang} ===")
+    print(f"Reading {TSV_PATH}")
+
+    # Read test.tsv — tab separated, first line is header
+    pairs = []  # list of (mp3_filename, transcript)
+    with open(TSV_PATH, encoding="utf-8") as f:
+        header = f.readline().strip().split("\t")
+        path_idx = header.index("path")
+        sentence_idx = header.index("sentence")
+
         for line in f:
-            line = line.strip()
-            if not line:
+            cols = line.strip().split("\t")
+            if len(cols) <= max(path_idx, sentence_idx):
                 continue
-            # Split on first space: "1089-134686-0000 SENTENCE HERE"
-            utt_id_raw, transcript = line.split(" ", 1)
-            # Find the corresponding .flac file
-            flac_path = trans_file.parent / f"{utt_id_raw}.flac"
-            if flac_path.exists():
-                pairs.append((flac_path, transcript))
+            mp3_name = cols[path_idx]
+            transcript = cols[sentence_idx]
+            pairs.append((mp3_name, transcript))
 
-    # Stop once we have enough
-    if len(pairs) >= NUM_SAMPLES:
-        break
+            if len(pairs) >= NUM_SAMPLES:
+                break
 
-# Take only the first NUM_SAMPLES
-pairs = pairs[:NUM_SAMPLES]
-print(f"  Found {len(pairs)} utterances")
+    print(f"  Found {len(pairs)} utterances to process")
 
-# =============================================================================
-# Process each audio clip and build the list of manifest records
-# =============================================================================
-records = []
+    records = []
 
-for flac_path, transcript in pairs:
-    stem = flac_path.stem  # e.g. "1089-134686-0000"
-    utt_id = f"{LANG}_{stem}"  # follows lab's recommendation: {lang}_{stem}
-    wav_path = RAW_DIR / f"{stem}.wav"
+    for mp3_name, transcript in pairs:
+        stem = mp3_name.replace(".mp3", "")
+        utt_id = f"{lang}_{stem}"
+        mp3_path = CLIPS_DIR / mp3_name
+        wav_path = WAV_DIR / f"{stem}.wav"
 
-    # Read .flac and save as .wav
-    # The pipeline and wav2vec2 model both require .wav format
-    audio_array, sr = sf.read(str(flac_path))
-    sf.write(str(wav_path), audio_array, sr)
+        # Convert .mp3 to .wav (16000 Hz mono)
+        convert_mp3_to_wav(str(mp3_path), str(wav_path))
 
-    # Compute md5 checksum of the saved .wav file
-    # The lab requires this for traceability
-    md5 = hashlib.md5(wav_path.read_bytes()).hexdigest()
+        # Read converted wav to get duration and sr
+        audio_array, sr = sf.read(str(wav_path))
+        md5 = hashlib.md5(wav_path.read_bytes()).hexdigest()
 
-    # Build the manifest record with all fields required by the lab
-    record = {
-        "utt_id": utt_id,
-        "lang": LANG,
-        "wav_path": str(wav_path).replace("\\", "/"),  # forward slashes for cross-platform
-        "ref_text": transcript,   # the raw text transcript
-        "ref_phon": None,         # filled in by Stage 1 (espeak-ng)
-        "sr": sr,                 # sampling rate in Hz
-        "duration_s": round(len(audio_array) / sr, 2),  # duration in seconds
-        "snr_db": None,           # null for clean audio (no noise added yet)
-        "audio_md5": md5          # checksum for traceability
-    }
-    records.append(record)
-    print(f"  Processed {wav_path.name}")
+        records.append({
+            "utt_id": utt_id,
+            "lang": lang,
+            "wav_path": str(wav_path).replace("\\", "/"),
+            "ref_text": transcript,
+            "ref_phon": None,       # filled by Stage 1
+            "sr": sr,
+            "duration_s": round(len(audio_array) / sr, 2),
+            "snr_db": None,         # filled by Stage 2
+            "audio_md5": md5
+        })
+        print(f"  Processed {wav_path.name}")
+
+    write_manifest(MANIFEST_DIR / "clean.jsonl", records)
+    print(f"  Manifest written: {MANIFEST_DIR}/clean.jsonl ({len(records)} utterances)")
 
 # =============================================================================
-# Write the manifest ATOMICALLY
-# Write to a temp file first, then rename to final path only when everything
-# is done — if the script crashes halfway, no incomplete manifest exists
+# Run for all languages in params.yaml
 # =============================================================================
-tmp_path = MANIFEST_DIR / "clean.jsonl.tmp"
-final_path = MANIFEST_DIR / "clean.jsonl"
+for lang in LANGUAGES:
+    prepare_language(lang)
 
-with open(tmp_path, "w", encoding="utf-8") as f:
-    for r in records:
-        # Each line is one valid JSON object — this is the .jsonl format
-        f.write(json.dumps(r, ensure_ascii=False) + "\n")
-
-# Rename temp file to final path — this is the atomic step
-tmp_path.rename(final_path)
-
-print(f"\nManifest written to {final_path} ({len(records)} utterances)")
+print("\nAll languages done!")
