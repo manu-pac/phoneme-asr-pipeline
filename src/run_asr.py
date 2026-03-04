@@ -1,9 +1,3 @@
-# =============================================================================
-# Stage 3: Run ASR Model
-# Reads each manifest (clean + noisy) for each language, runs wav2vec2,
-# and writes prediction manifests.
-# =============================================================================
-
 import json
 import os
 import torch
@@ -52,22 +46,18 @@ for lang in LANGUAGES:
 
     for manifest_path in manifests:
         print(f"  Processing {manifest_path.name}")
-        records = []
-        with open(manifest_path, encoding="utf-8") as f:
-            lines = f.readlines()
-
-        for i, line in enumerate(lines):
-            record = json.loads(line)
-            record["pred_phon"] = predict_phonemes(record["wav_path"])
-            records.append(record)
-            print(f"    [{i+1}/{len(lines)}] {record['utt_id']}: {record['pred_phon'][:40]}...")
-
-        stem = manifest_path.stem
-        final_path = MANIFEST_DIR / f"pred_{stem}.jsonl"
+        final_path = MANIFEST_DIR / f"pred_{manifest_path.stem}.jsonl"
         tmp_path = Path(str(final_path) + ".tmp")
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            for r in records:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+        # Process one record at a time — no full list in memory
+        with open(manifest_path, encoding="utf-8") as fin, \
+             open(tmp_path, "w", encoding="utf-8") as fout:
+            for i, line in enumerate(fin):
+                record = json.loads(line)
+                record["pred_phon"] = predict_phonemes(record["wav_path"])
+                fout.write(json.dumps(record, ensure_ascii=False) + "\n")
+                print(f"    [{i+1}] {record['utt_id']}: {record['pred_phon'][:40]}...")
+
         tmp_path.replace(final_path)
         print(f"    Written: {final_path}")
 

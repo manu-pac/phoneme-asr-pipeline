@@ -1,9 +1,3 @@
-# =============================================================================
-# Stage 2: Add Noise
-# Reads clean_phonemized.jsonl for each language, creates noisy versions
-# at each SNR level, and writes one manifest per SNR level.
-# =============================================================================
-
 import json
 import numpy as np
 import soundfile as sf
@@ -41,31 +35,27 @@ for lang in LANGUAGES:
 
     print(f"\n=== Adding noise for language: {lang} ===")
 
-    records = []
-    with open(INPUT_MANIFEST, encoding="utf-8") as f:
-        for line in f:
-            records.append(json.loads(line))
-
     for snr_db in SNR_LEVELS:
         print(f"  SNR = {snr_db} dB")
         snr_dir = NOISY_DIR / f"snr_{snr_db}"
         snr_dir.mkdir(parents=True, exist_ok=True)
 
-        noisy_records = []
-        for record in records:
-            stem = Path(record["wav_path"]).stem
-            noisy_wav = snr_dir / f"{stem}.wav"
-            add_noise_to_file(record["wav_path"], str(noisy_wav), snr_db, seed=SEED)
-            noisy_record = dict(record)
-            noisy_record["wav_path"] = str(noisy_wav).replace("\\", "/")
-            noisy_record["snr_db"] = snr_db
-            noisy_records.append(noisy_record)
-
         final_path = MANIFEST_DIR / f"noisy_snr_{snr_db}.jsonl"
         tmp_path = Path(str(final_path) + ".tmp")
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            for r in noisy_records:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+        # Process one record at a time — no full list in memory
+        with open(INPUT_MANIFEST, encoding="utf-8") as fin, \
+             open(tmp_path, "w", encoding="utf-8") as fout:
+            for line in fin:
+                record = json.loads(line)
+                stem = Path(record["wav_path"]).stem
+                noisy_wav = snr_dir / f"{stem}.wav"
+                add_noise_to_file(record["wav_path"], str(noisy_wav), snr_db, seed=SEED)
+                noisy_record = dict(record)
+                noisy_record["wav_path"] = str(noisy_wav).replace("\\", "/")
+                noisy_record["snr_db"] = snr_db
+                fout.write(json.dumps(noisy_record, ensure_ascii=False) + "\n")
+
         tmp_path.replace(final_path)
         print(f"    Manifest written: {final_path}")
 

@@ -1,95 +1,65 @@
 stages:
   prepare_data:
     cmd: python src/prepare_data.py
+    params:
+      - languages
+      - data
     deps:
       - src/prepare_data.py
-      - params.yaml
     outs:
-      - data/manifests/en/clean.jsonl
-      - data/raw/en/wav
+      - data/manifests
+      - data/raw/pt/wav
 
   phonemize:
     cmd: python src/phonemize.py
+    params:
+      - languages
+      - data
     deps:
       - src/phonemize.py
-      - params.yaml
-      - data/manifests/en/clean.jsonl
-    outs:
-      - data/manifests/en/clean_phonemized.jsonl
+      - data/manifests/pt/clean.jsonl
 
-add_noise:
+  add_noise:
     cmd: python src/add_noise.py
+    params:
+      - languages
+      - data
+      - snr_levels
+      - seed
     deps:
       - src/add_noise.py
-      - params.yaml
-      - data/manifests/en/clean_phonemized.jsonl
-    outs:
-      - data/noisy/en
-      - data/manifests/en/noisy_snr_40.jsonl
-      - data/manifests/en/noisy_snr_35.jsonl
-      - data/manifests/en/noisy_snr_30.jsonl
-      - data/manifests/en/noisy_snr_25.jsonl
-      - data/manifests/en/noisy_snr_20.jsonl
-      - data/manifests/en/noisy_snr_15.jsonl
-      - data/manifests/en/noisy_snr_10.jsonl
-      - data/manifests/en/noisy_snr_5.jsonl
-      - data/manifests/en/noisy_snr_0.jsonl
-      - data/manifests/en/noisy_snr_-5.jsonl
+      - data/manifests/pt/clean_phonemized.jsonl
 
-run_asr:
+  run_asr:
     cmd: python src/run_asr.py
+    params:
+      - languages
+      - data
+      - snr_levels
+      - model
     deps:
       - src/run_asr.py
-      - params.yaml
-      - data/manifests/en/clean_phonemized.jsonl
-      - data/manifests/en/noisy_snr_40.jsonl
-      - data/manifests/en/noisy_snr_35.jsonl
-      - data/manifests/en/noisy_snr_30.jsonl
-      - data/manifests/en/noisy_snr_25.jsonl
-      - data/manifests/en/noisy_snr_20.jsonl
-      - data/manifests/en/noisy_snr_15.jsonl
-      - data/manifests/en/noisy_snr_10.jsonl
-      - data/manifests/en/noisy_snr_5.jsonl
-      - data/manifests/en/noisy_snr_0.jsonl
-      - data/manifests/en/noisy_snr_-5.jsonl
-    outs:
-      - data/manifests/en/pred_clean_phonemized.jsonl
-      - data/manifests/en/pred_noisy_snr_40.jsonl
-      - data/manifests/en/pred_noisy_snr_35.jsonl
-      - data/manifests/en/pred_noisy_snr_30.jsonl
-      - data/manifests/en/pred_noisy_snr_25.jsonl
-      - data/manifests/en/pred_noisy_snr_20.jsonl
-      - data/manifests/en/pred_noisy_snr_15.jsonl
-      - data/manifests/en/pred_noisy_snr_10.jsonl
-      - data/manifests/en/pred_noisy_snr_5.jsonl
-      - data/manifests/en/pred_noisy_snr_0.jsonl
-      - data/manifests/en/pred_noisy_snr_-5.jsonl
+      - data/manifests/pt/clean_phonemized.jsonl
 
-evaluate:
+  evaluate:
     cmd: python src/evaluate.py
+    params:
+      - languages
+      - data
+      - snr_levels
     deps:
       - src/evaluate.py
-      - params.yaml
-      - data/manifests/en/pred_clean_phonemized.jsonl
-      - data/manifests/en/pred_noisy_snr_40.jsonl
-      - data/manifests/en/pred_noisy_snr_35.jsonl
-      - data/manifests/en/pred_noisy_snr_30.jsonl
-      - data/manifests/en/pred_noisy_snr_25.jsonl
-      - data/manifests/en/pred_noisy_snr_20.jsonl
-      - data/manifests/en/pred_noisy_snr_15.jsonl
-      - data/manifests/en/pred_noisy_snr_10.jsonl
-      - data/manifests/en/pred_noisy_snr_5.jsonl
-      - data/manifests/en/pred_noisy_snr_0.jsonl
-      - data/manifests/en/pred_noisy_snr_-5.jsonl
     metrics:
-      - metrics/per_en.json
+      - metrics/per_pt.json:
+          cache: false
 
-
-plot:
+  plot:
     cmd: python src/plot.py
+    params:
+      - languages
     deps:
       - src/plot.py
-      - params.yaml
-      - metrics/per_en.json
-    outs:
-      - plots/per_vs_snr.png
+      - metrics/per_pt.json
+    plots:
+      - plots/per_vs_snr.png:
+          cache: false
