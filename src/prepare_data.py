@@ -17,7 +17,7 @@ with open("params.yaml") as f:
     params = yaml.safe_load(f)
 
 LANGUAGES = params["languages"]
-NUM_SAMPLES = 5
+NUM_SAMPLES = params["num_samples"]
 CV_VERSION = "cv-corpus-24.0-2025-12-05"
 
 # Helper: convert .mp3 to .wav using ffmpeg
