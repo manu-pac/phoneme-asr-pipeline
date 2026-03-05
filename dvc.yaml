@@ -6,9 +6,9 @@ stages:
       - data
     deps:
       - src/prepare_data.py
+      - data/raw
     outs:
-      - data/manifests
-      - data/raw/pt/wav
+      - data/pipeline/manifests
 
   phonemize:
     cmd: python src/phonemize.py
@@ -17,7 +17,7 @@ stages:
       - data
     deps:
       - src/phonemize.py
-      - data/manifests/pt/clean.jsonl
+      - data/pipeline/manifests
 
   add_noise:
     cmd: python src/add_noise.py
@@ -28,7 +28,9 @@ stages:
       - seed
     deps:
       - src/add_noise.py
-      - data/manifests/pt/clean_phonemized.jsonl
+      - data/pipeline/manifests
+    outs:
+      - data/pipeline/noisy
 
   run_asr:
     cmd: python src/run_asr.py
@@ -39,7 +41,8 @@ stages:
       - model
     deps:
       - src/run_asr.py
-      - data/manifests/pt/clean_phonemized.jsonl
+      - data/pipeline/manifests
+      - data/pipeline/noisy
 
   evaluate:
     cmd: python src/evaluate.py
@@ -49,8 +52,9 @@ stages:
       - snr_levels
     deps:
       - src/evaluate.py
+      - data/pipeline/manifests
     metrics:
-      - metrics/per_pt.json:
+      - metrics:
           cache: false
 
   plot:
@@ -59,7 +63,7 @@ stages:
       - languages
     deps:
       - src/plot.py
-      - metrics/per_pt.json
+      - metrics
     plots:
-      - plots/per_vs_snr.png:
+      - plots:
           cache: false

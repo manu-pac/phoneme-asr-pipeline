@@ -1,5 +1,6 @@
 languages:
-  - pt
+  - af
+  - sq
 
 snr_levels:
   - 40
@@ -17,8 +18,8 @@ seed: 42
 
 data:
   raw_dir: data/raw
-  manifest_dir: data/manifests
-  noisy_dir: data/noisy
+  manifest_dir: data/pipeline/manifests
+  noisy_dir: data/pipeline/noisy
 
 model:
   name: facebook/wav2vec2-lv-60-espeak-cv-ft

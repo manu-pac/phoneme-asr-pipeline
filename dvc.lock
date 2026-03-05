@@ -1,0 +1,190 @@
+schema: '2.0'
+stages:
+  prepare_data:
+    cmd: python src/prepare_data.py
+    deps:
+    - path: data/raw
+      hash: md5
+      md5: fc65cf822dffb6c51e37561982888159.dir
+      size: 331907481
+      nfiles: 9242
+    - path: src/prepare_data.py
+      hash: md5
+      md5: caa898265cfe07413b5527cd0df489e1
+      size: 4846
+    params:
+      params.yaml:
+        data:
+          raw_dir: data/raw
+          manifest_dir: data/pipeline/manifests
+          noisy_dir: data/pipeline/noisy
+        languages:
+        - af
+        - sq
+    outs:
+    - path: data/pipeline/manifests
+      hash: md5
+      md5: 1232de22ce02976af43a3765551f1296.dir
+      size: 2982
+      nfiles: 2
+  phonemize:
+    cmd: python src/phonemize.py
+    deps:
+    - path: data/pipeline/manifests
+      hash: md5
+      md5: d77884cc26d67cbacc2e24803000d8c7.dir
+      size: 6650
+      nfiles: 4
+    - path: src/phonemize.py
+      hash: md5
+      md5: d5e66122b8588634f6a5933db02b70c3
+      size: 1358
+    params:
+      params.yaml:
+        data:
+          raw_dir: data/raw
+          manifest_dir: data/pipeline/manifests
+          noisy_dir: data/pipeline/noisy
+        languages:
+        - af
+        - sq
+  add_noise:
+    cmd: python src/add_noise.py
+    deps:
+    - path: data/pipeline/manifests
+      hash: md5
+      md5: 9f9df6f3e6a03c7857225a4beea107ab.dir
+      size: 44490
+      nfiles: 24
+    - path: src/add_noise.py
+      hash: md5
+      md5: dd1874bfe65a3544668f811a09a7d990
+      size: 2322
+    params:
+      params.yaml:
+        data:
+          raw_dir: data/raw
+          manifest_dir: data/pipeline/manifests
+          noisy_dir: data/pipeline/noisy
+        languages:
+        - af
+        - sq
+        seed: 42
+        snr_levels:
+        - 40
+        - 35
+        - 30
+        - 25
+        - 20
+        - 15
+        - 10
+        - 5
+        - 0
+        - -5
+    outs:
+    - path: data/pipeline/noisy
+      hash: md5
+      md5: 8061463fe5ace2929a387e8648688d50.dir
+      size: 19173680
+      nfiles: 100
+  run_asr:
+    cmd: python src/run_asr.py
+    deps:
+    - path: data/pipeline/manifests
+      hash: md5
+      md5: 9db71dfea1d26892a926540c6a2d258e.dir
+      size: 95280
+      nfiles: 46
+    - path: data/pipeline/noisy
+      hash: md5
+      md5: 8061463fe5ace2929a387e8648688d50.dir
+      size: 19173680
+      nfiles: 100
+    - path: src/run_asr.py
+      hash: md5
+      md5: 9d4f773aadc3761253ca83801f92381b
+      size: 2367
+    params:
+      params.yaml:
+        data:
+          raw_dir: data/raw
+          manifest_dir: data/pipeline/manifests
+          noisy_dir: data/pipeline/noisy
+        languages:
+        - af
+        - sq
+        model:
+          name: facebook/wav2vec2-lv-60-espeak-cv-ft
+          sample_rate: 16000
+        snr_levels:
+        - 40
+        - 35
+        - 30
+        - 25
+        - 20
+        - 15
+        - 10
+        - 5
+        - 0
+        - -5
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+    - path: data/pipeline/manifests
+      hash: md5
+      md5: 9db71dfea1d26892a926540c6a2d258e.dir
+      size: 95280
+      nfiles: 46
+    - path: src/evaluate.py
+      hash: md5
+      md5: c0dea1ef4d517596c2cd17141c865d60
+      size: 2531
+    params:
+      params.yaml:
+        data:
+          raw_dir: data/raw
+          manifest_dir: data/pipeline/manifests
+          noisy_dir: data/pipeline/noisy
+        languages:
+        - af
+        - sq
+        snr_levels:
+        - 40
+        - 35
+        - 30
+        - 25
+        - 20
+        - 15
+        - 10
+        - 5
+        - 0
+        - -5
+    outs:
+    - path: metrics
+      hash: md5
+      md5: b4d3d3299b9f89fb6e0e4b293c9ac3be.dir
+      size: 646
+      nfiles: 2
+  plot:
+    cmd: python src/plot.py
+    deps:
+    - path: metrics
+      hash: md5
+      md5: b4d3d3299b9f89fb6e0e4b293c9ac3be.dir
+      size: 646
+      nfiles: 2
+    - path: src/plot.py
+      hash: md5
+      md5: 56baf3d2fb719e01ff43e9c499bd4afe
+      size: 2631
+    params:
+      params.yaml:
+        languages:
+        - af
+        - sq
+    outs:
+    - path: plots
+      hash: md5
+      md5: e2eaf6e518e3619f61d73ed154e56ba1.dir
+      size: 77901
+      nfiles: 1

@@ -17,12 +17,10 @@ with open("params.yaml") as f:
     params = yaml.safe_load(f)
 
 LANGUAGES = params["languages"]
-NUM_SAMPLES = 30
+NUM_SAMPLES = 5
 CV_VERSION = "cv-corpus-24.0-2025-12-05"
 
-# =============================================================================
 # Helper: convert .mp3 to .wav using ffmpeg
-# =============================================================================
 def convert_mp3_to_wav(mp3_path: str, wav_path: str) -> None:
     subprocess.run(
         [
@@ -63,6 +61,11 @@ def prepare_language(lang: str) -> None:
     MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"\n=== Preparing language: {lang} ===")
+
+    if (MANIFEST_DIR / "clean.jsonl").exists():
+        print(f"  Manifest already exists, skipping {lang}.")
+        return
+
     print(f"Reading {TSV_PATH}")
 
     # Read test.tsv — tab separated, first line is header
